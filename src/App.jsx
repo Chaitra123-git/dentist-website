@@ -399,8 +399,8 @@ const Footer = () => {
           </div>
           {[
             { t:"Navigation", items:[["Home","/"],["Services","/services"],["Gallery","/gallery"],["Doctors","/doctors"],["Pricing","/pricing"],["FAQ","/faq"],["Contact","/contact"]] },
-            { t:"Treatments",  items:[["Dental Cleaning"],["Teeth Whitening"],["Dental Implants"],["Root Canal"],["Orthodontics"],["Cosmetic Dentistry"]] },
-            { t:"Get In Touch", items:[["+91 98765 43210"],["+91 80 4567 8901"],["hello@pearldent.in"],["42 Brigade Road"],["Indiranagar, Bangalore – 560001"],["Open 7 Days/Week"]] },
+            { t:"Treatments",  items:[["Dental Cleaning","/"],["Teeth Whitening","/"],["Dental Implants","/"],["Root Canal","/"],["Orthodontics","/"],["Cosmetic Dentistry","/"]] },
+            { t:"Get In Touch", items:[["+91 98765 43210","/"],["+91 80 4567 8901","/"],["hello@pearldent.in","/"],["42 Brigade Road","/"],["Indiranagar, Bangalore – 560001","/"],["Open 7 Days/Week","/"]] },
           ].map(col => (
             <div key={col.t}>
               <h4 style={{ fontSize:".78rem", fontWeight:700, letterSpacing:".1em", color:"var(--em-l)", marginBottom:18, textTransform:"uppercase" }}>{col.t}</h4>
