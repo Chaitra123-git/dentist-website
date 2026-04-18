@@ -31,7 +31,7 @@ import {
 const GlobalStyles = () => (
   <style>{`
     :root {
-      --navy:   #0b2545;
+      --navy:   #113c72;
       --teal:   #0ea5e9;
       --mint:   #10b981;
       --sky:    #e0f2fe;
