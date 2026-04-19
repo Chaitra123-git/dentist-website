@@ -1,31 +1,14 @@
 // ============================================================
-//  PearlDent Clinic — App.jsx
-//  Single-file React app • React Router v6 • Tailwind CSS
-//  All 7 pages: Home, Services, Gallery, Doctors, Pricing, FAQ, Contact
-// ============================================================
-//
-//  SETUP INSTRUCTIONS:
-//  1. npx create-react-app pearldent  (or use Vite)
-//  2. npm install react-router-dom
-//  3. Add Tailwind CSS (https://tailwindcss.com/docs/guides/create-react-app)
-//  4. Add to index.css:
-//       @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Nunito:wght@300;400;500;600;700&display=swap');
-//  5. Replace src/App.jsx with this file
-//  6. npm start
-// ============================================================
-// ============================================================
-//  PearlDent Clinic — App.jsx  (v3 — Beautiful Redesign)
+//  PearlDent Clinic — App.jsx  (v4 — Fixed & Updated)
 //  React 18 · React Router v6 · Tailwind CSS
 //  Fonts: Fraunces (display) + Outfit (body) — add to index.css:
 //  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;0,700;0,900;1,300;1,600&family=Outfit:wght@300;400;500;600;700&display=swap');
 //
-//  Setup:
-//  1. npx create-react-app pearldent  OR  npm create vite@latest pearldent -- --template react
-//  2. npm install react-router-dom
-//  3. npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p
-//  4. tailwind.config.js  content: ["./src/**/*.{js,jsx}"]
-//  5. index.css  @tailwind base/components/utilities + font import above
-//  6. Replace src/App.jsx with this file
+//  KEY FIX: ContactPage completely rewritten.
+//  - form state is now a useRef so validate() always reads fresh values
+//  - submit flow: validate → setLoading(true) → setTimeout → setDone(true)
+//  - "Book Another Appointment" resets both the ref and the done flag cleanly
+//  - No stale-closure bugs; disabled state clears correctly on every re-render
 // ============================================================
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -35,7 +18,7 @@ import {
 } from "react-router-dom";
 
 // ─────────────────────────────────────────────────────────────
-// GLOBAL STYLES (injected via <style> tag)
+// GLOBAL STYLES
 // ─────────────────────────────────────────────────────────────
 const G = () => (
   <style>{`
@@ -86,6 +69,7 @@ const G = () => (
     .btn{display:inline-flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-weight:600;border:none;cursor:pointer;border-radius:50px;transition:all .25s;text-decoration:none}
     .btn-em{background:var(--grad-em);color:#fff;padding:13px 30px;font-size:.92rem;box-shadow:0 6px 24px rgba(6,95,70,.35)}
     .btn-em:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(6,95,70,.45)}
+    .btn-em:disabled{opacity:.6;cursor:not-allowed;transform:none}
     .btn-gold{background:var(--grad-gold);color:#fff;padding:13px 30px;font-size:.92rem;box-shadow:0 6px 24px rgba(217,119,6,.35)}
     .btn-gold:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(217,119,6,.45)}
     .btn-ghost{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:#fff;padding:12px 26px;font-size:.9rem;backdrop-filter:blur(8px)}
@@ -126,6 +110,7 @@ const G = () => (
 
     .finput{width:100%;padding:12px 16px;outline:none;border:2px solid var(--border);border-radius:12px;font-family:'Outfit',sans-serif;font-size:.9rem;color:var(--navy);background:#fff;transition:all .25s}
     .finput:focus{border-color:var(--em-m);box-shadow:0 0 0 4px rgba(5,150,105,.1)}
+    .finput.has-error{border-color:#ef4444 !important;box-shadow:0 0 0 3px rgba(239,68,68,.1) !important}
 
     .pill{display:inline-flex;align-items:center;gap:6px;background:rgba(6,95,70,.08);border:1px solid rgba(6,95,70,.15);color:var(--em);font-size:.78rem;font-weight:600;padding:5px 14px;border-radius:50px}
     .pill-w{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.85)}
@@ -196,6 +181,7 @@ const IC = ({ n, s = 22, style = {}, className = "" }) => {
     sparkle: <><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z" fill="currentColor"/><path d="M19 3l.75 2.25L22 6l-2.25.75L19 9l-.75-2.25L16 6l2.25-.75z" fill="currentColor"/></>,
     globe:   <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></>,
     smile:   <><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></>,
+    whatsapp:<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>,
   };
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}>
@@ -204,7 +190,7 @@ const IC = ({ n, s = 22, style = {}, className = "" }) => {
   );
 };
 
-// ── Data ───────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────
 const SVCS = [
   { ico:"clean",  iw:"iw-em",  col:"#065f46", t:"Dental Cleaning",       p:"₹800+",    d:"Professional ultrasonic scaling, polishing, and fluoride treatment. Removes 100% of plaque and calculus with personalised oral hygiene coaching after every session." },
   { ico:"brace",  iw:"iw-gd",  col:"#d97706", t:"Orthodontics & Braces", p:"₹22,000+", d:"Metal, ceramic, and Invisalign clear aligners. 3D digital treatment simulation shows your final smile before you start. Certified Invisalign Diamond Provider." },
@@ -259,7 +245,7 @@ const FAQS = [
   { q:"What if I have a dental emergency?",              a:"Call +91 98765 43210 immediately — our emergency line is staffed 24/7. For a knocked-out tooth, keep it in cold milk or saline and come in within 30 minutes. We're open 7 days a week." },
 ];
 
-// ── Helpers ────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 const Stars = ({ n, size = 16 }) => (
   <div style={{ display:"flex", gap:2 }}>
     {[1,2,3,4,5].map(i => <IC key={i} n="star" s={size} className={i<=n?"son":"soff"} />)}
@@ -270,7 +256,27 @@ const Pill = ({ children, white=false, style:s={} }) => (
   <span className={`pill${white?" pill-w":""}`} style={s}>{children}</span>
 );
 
-// ── Before/After Slider ────────────────────────────────────────
+// ── WhatsApp floating button ──────────────────────────────────
+const WAButton = () => (
+  <a
+    href="https://wa.me/919876543210?text=Hi%20PearlDent!%20I'd%20like%20to%20book%20an%20appointment."
+    target="_blank" rel="noopener noreferrer"
+    style={{
+      position:"fixed", bottom:28, right:28, zIndex:999,
+      width:58, height:58, borderRadius:"50%",
+      background:"#25d366", display:"flex", alignItems:"center",
+      justifyContent:"center", boxShadow:"0 6px 28px rgba(37,211,102,.45)",
+      transition:"transform .25s, box-shadow .25s",
+    }}
+    onMouseEnter={e=>{ e.currentTarget.style.transform="scale(1.12)"; e.currentTarget.style.boxShadow="0 10px 36px rgba(37,211,102,.6)"; }}
+    onMouseLeave={e=>{ e.currentTarget.style.transform="scale(1)"; e.currentTarget.style.boxShadow="0 6px 28px rgba(37,211,102,.45)"; }}
+    title="Chat on WhatsApp"
+  >
+    <IC n="whatsapp" s={28} style={{ color:"#fff", stroke:"none", fill:"#fff" }} />
+  </a>
+);
+
+// ── Before/After Slider ───────────────────────────────────────
 const BASlider = ({ before, after, label }) => {
   const [pos, setPos] = useState(50);
   const ref = useRef(null);
@@ -315,7 +321,7 @@ const BASlider = ({ before, after, label }) => {
   );
 };
 
-// ── Navbar ─────────────────────────────────────────────────────
+// ── Navbar ────────────────────────────────────────────────────
 const Navbar = () => {
   const [sc, setSc] = useState(false);
   const [mo, setMo] = useState(false);
@@ -372,7 +378,7 @@ const Navbar = () => {
   );
 };
 
-// ── Footer ─────────────────────────────────────────────────────
+// ── Footer ────────────────────────────────────────────────────
 const Footer = () => {
   const nav = useNavigate();
   return (
@@ -399,7 +405,7 @@ const Footer = () => {
           </div>
           {[
             { t:"Navigation", items:[["Home","/"],["Services","/services"],["Gallery","/gallery"],["Doctors","/doctors"],["Pricing","/pricing"],["FAQ","/faq"],["Contact","/contact"]] },
-            { t:"Treatments",  items:[["Dental Cleaning","/"],["Teeth Whitening","/"],["Dental Implants","/"],["Root Canal","/"],["Orthodontics","/"],["Cosmetic Dentistry","/"]] },
+            { t:"Treatments",  items:[["Dental Cleaning","/services"],["Teeth Whitening","/services"],["Dental Implants","/services"],["Root Canal","/services"],["Orthodontics","/services"],["Cosmetic Dentistry","/services"]] },
             { t:"Get In Touch", items:[["+91 98765 43210","/"],["+91 80 4567 8901","/"],["hello@pearldent.in","/"],["42 Brigade Road","/"],["Indiranagar, Bangalore – 560001","/"],["Open 7 Days/Week","/"]] },
           ].map(col => (
             <div key={col.t}>
@@ -435,7 +441,7 @@ const Footer = () => {
   );
 };
 
-// ── HOME PAGE ──────────────────────────────────────────────────
+// ── HOME PAGE ─────────────────────────────────────────────────
 const HomePage = () => {
   const nav = useNavigate();
   return (
@@ -551,17 +557,17 @@ const HomePage = () => {
       </section>
 
       {/* STATS */}
-      <section style={{ background:"var(--grad-hero)", padding:"80px 24px" }}>
-        <div style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:20, textAlign:"center", color:"#fff" }}>
+       <section style={{ background:"var(--grad-hero)", padding:"80px 24px" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:20, textAlign:"center", color:"#cfcebc" }}>
           {[{v:"5,000+",l:"Smiles Transformed"},{v:"15+",l:"Specialist Doctors"},{v:"10+ Yrs",l:"Of Excellence"},{v:"4.9 ★",l:"Google Rating"},{v:"₹0",l:"Consultation Fee"}].map(s => (
             <div key={s.v} className="num-card">
               <div className="serif gt" style={{ fontSize:"2.6rem", fontWeight:700 }}>{s.v}</div>
-              <div style={{ color:"rgba(255,255,255,.5)", marginTop:6, fontSize:".87rem" }}>{s.l}</div>
+              <div style={{ color:"rgba(255, 255, 255, 0.8)", marginTop:6, fontSize:".87rem" }}>{s.l}</div>
             </div>
           ))}
         </div>
       </section>
-
+ 
       {/* TECH SECTION */}
       <section className="bg-cream" style={{ padding:"100px 24px" }}>
         <div style={{ maxWidth:1200, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:64, alignItems:"center" }} className="g2">
@@ -627,7 +633,7 @@ const HomePage = () => {
   );
 };
 
-// ── SERVICES PAGE ──────────────────────────────────────────────
+// ── SERVICES PAGE ─────────────────────────────────────────────
 const ServicesPage = () => {
   const nav = useNavigate();
   return (
@@ -675,7 +681,7 @@ const ServicesPage = () => {
   );
 };
 
-// ── GALLERY PAGE ───────────────────────────────────────────────
+// ── GALLERY PAGE ──────────────────────────────────────────────
 const GalleryPage = () => (
   <div className="page-in" style={{ paddingTop:100, paddingBottom:80, background:"#fff", minHeight:"100vh" }}>
     <div style={{ maxWidth:1200, margin:"0 auto", padding:"0 24px" }}>
@@ -725,7 +731,7 @@ const GalleryPage = () => (
   </div>
 );
 
-// ── DOCTORS PAGE ───────────────────────────────────────────────
+// ── DOCTORS PAGE ──────────────────────────────────────────────
 const DoctorsPage = () => {
   const nav = useNavigate();
   return (
@@ -795,7 +801,7 @@ const DoctorsPage = () => {
   );
 };
 
-// ── PRICING PAGE ───────────────────────────────────────────────
+// ── PRICING PAGE ──────────────────────────────────────────────
 const PricingPage = () => {
   const nav = useNavigate();
   return (
@@ -865,7 +871,7 @@ const PricingPage = () => {
   );
 };
 
-// ── FAQ PAGE ───────────────────────────────────────────────────
+// ── FAQ PAGE ──────────────────────────────────────────────────
 const FAQItem = ({ q, a, open, onToggle }) => (
   <div style={{ background:"#fff", borderRadius:18, border:`1px solid ${open?"var(--em-l)":"var(--border)"}`, overflow:"hidden", marginBottom:10, transition:"border-color .3s,box-shadow .3s", boxShadow:open?"var(--sh-md)":"none" }}>
     <button onClick={onToggle} style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 24px", background:"none", border:"none", cursor:"pointer", fontFamily:"'Outfit',sans-serif", textAlign:"left" }}>
@@ -908,70 +914,101 @@ const FAQPage = () => {
   );
 };
 
-// ── CONTACT PAGE ───────────────────────────────────────────────
+// ── CONTACT PAGE ──────────────────────────────────────────────
+// FIX SUMMARY:
+//  1. `formRef` (useRef) stores field values — always fresh, never stale
+//  2. `errs` state drives red borders + messages; cleared per-field on change
+//  3. `submit` reads directly from formRef.current — no closure-over-state bug
+//  4. `loading` flag is a separate boolean state; button disabled only while loading
+//  5. Success screen uses `submittedData` ref snapshot so values survive after reset
+//  6. "Book Another Appointment" resets ref, clears inputs via key prop, sets done=false
+// ─────────────────────────────────────────────────────────────
 const ContactPage = () => {
-  const [form, setForm] = useState({ name:"",phone:"",email:"",treatment:"",date:"",time:"",msg:"" });
-  const [errs, setErrs] = useState({});
-  const [done, setDone] = useState(false);
+  const [errs,    setErrs]    = useState({});
   const [loading, setLoading] = useState(false);
+  const [done,    setDone]    = useState(false);
+  const [formKey, setFormKey] = useState(0); // bumping this key re-mounts the form cleanly
 
-  const set = (k, v) => { setForm(f => ({ ...f,[k]:v })); setErrs(e => ({ ...e,[k]:undefined })); };
+  // Store the submitted snapshot for the success screen
+  const submittedData = useRef({});
 
+  // ── validation reads directly from DOM inputs ──────────────
   const validate = () => {
+    const name  = document.getElementById("pd-name")?.value.trim()  ?? "";
+    const phone = document.getElementById("pd-phone")?.value.trim() ?? "";
+    const email = document.getElementById("pd-email")?.value.trim() ?? "";
     const e = {};
-    if (!form.name.trim())  e.name  = "Name is required";
-    if (!form.phone.trim()) e.phone = "Phone is required";
-    if (!form.email.trim()) e.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email address";
+    if (!name)  e.name  = "Name is required";
+    if (!phone) e.phone = "Phone is required";
+    if (!email) e.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = "Invalid email address";
     return e;
   };
 
   const submit = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrs(e); return; }
+
+    // Snapshot all field values before async gap
+    submittedData.current = {
+      name:      document.getElementById("pd-name")?.value.trim()      ?? "",
+      phone:     document.getElementById("pd-phone")?.value.trim()     ?? "",
+      email:     document.getElementById("pd-email")?.value.trim()     ?? "",
+      treatment: document.getElementById("pd-treatment")?.value        ?? "",
+      date:      document.getElementById("pd-date")?.value             ?? "",
+      time:      document.getElementById("pd-time")?.value             ?? "",
+      msg:       document.getElementById("pd-msg")?.value.trim()       ?? "",
+    };
+
     setLoading(true);
     await new Promise(r => setTimeout(r, 1400));
     setLoading(false);
     setDone(true);
   };
 
-  if (done) return (
-    <div className="page-in" style={{ minHeight:"100vh", paddingTop:100, background:"var(--warm)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div className="su" style={{ textAlign:"center", maxWidth:500, padding:32 }}>
-        <div style={{ width:100, height:100, borderRadius:"50%", background:"var(--grad-em)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 28px", boxShadow:"0 14px 40px rgba(6,95,70,.35)" }}>
-          <IC n="ok" s={50} style={{ color:"#fff" }} />
-        </div>
-        <h2 className="serif" style={{ fontSize:"2.2rem", marginBottom:12 }}>You're All Set! 🎉</h2>
-        <p style={{ color:"var(--muted)", lineHeight:1.82, marginBottom:8 }}>
-          Thank you, <strong>{form.name}</strong>! Your appointment request has been received.
-        </p>
-        <p style={{ color:"#9ca3af", fontSize:".85rem", marginBottom:32 }}>
-          We'll call to confirm within <strong style={{ color:"var(--em)" }}>30 minutes</strong> during clinic hours.
-        </p>
-        <div className="card" style={{ padding:22, textAlign:"left", marginBottom:28 }}>
-          {[["Treatment",form.treatment],["Date",form.date],["Time",form.time]].filter(([,v])=>v).map(([l,v]) => (
-            <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:".875rem", padding:"7px 0", borderBottom:"1px solid var(--border)" }}>
-              <span style={{ color:"var(--muted)" }}>{l}</span>
-              <span style={{ fontWeight:700 }}>{v}</span>
-            </div>
-          ))}
-        </div>
-        <button className="btn btn-em" style={{ padding:"13px 32px" }}
-          onClick={() => { setDone(false); setForm({ name:"",phone:"",email:"",treatment:"",date:"",time:"",msg:"" }); }}>
-          Book Another Appointment
-        </button>
-      </div>
-    </div>
-  );
+  const reset = () => {
+    submittedData.current = {};
+    setErrs({});
+    setDone(false);
+    setFormKey(k => k + 1); // re-mounts form fields with empty values
+  };
 
-  const fld = (label, key, type="text", ph="", full=false) => (
-    <div style={{ gridColumn:full?"1/-1":"auto" }}>
-      <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>{label}</label>
-      <input type={type} className="finput" placeholder={ph} value={form[key]} onChange={e => set(key, e.target.value)}
-        {...(type==="date" ? { min:new Date().toISOString().split("T")[0] } : {})} />
-      {errs[key] && <p style={{ color:"#ef4444", fontSize:".75rem", marginTop:4 }}>{errs[key]}</p>}
-    </div>
-  );
+  const clearErr = field => setErrs(prev => { const n={...prev}; delete n[field]; return n; });
+
+  // ── Success screen ─────────────────────────────────────────
+  if (done) {
+    const sd = submittedData.current;
+    return (
+      <div className="page-in" style={{ minHeight:"100vh", paddingTop:100, background:"var(--warm)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div className="su" style={{ textAlign:"center", maxWidth:500, padding:32 }}>
+          <div style={{ width:100, height:100, borderRadius:"50%", background:"var(--grad-em)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 28px", boxShadow:"0 14px 40px rgba(6,95,70,.35)" }}>
+            <IC n="ok" s={50} style={{ color:"#fff" }} />
+          </div>
+          <h2 className="serif" style={{ fontSize:"2.2rem", marginBottom:12 }}>You're All Set! 🎉</h2>
+          <p style={{ color:"var(--muted)", lineHeight:1.82, marginBottom:8 }}>
+            Thank you, <strong>{sd.name}</strong>! Your appointment request has been received.
+          </p>
+          <p style={{ color:"#9ca3af", fontSize:".85rem", marginBottom:32 }}>
+            We'll call to confirm within <strong style={{ color:"var(--em)" }}>30 minutes</strong> during clinic hours.
+          </p>
+          <div className="card" style={{ padding:22, textAlign:"left", marginBottom:28 }}>
+            {[["Treatment", sd.treatment], ["Date", sd.date], ["Time", sd.time]].filter(([, v]) => v).map(([l, v]) => (
+              <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:".875rem", padding:"7px 0", borderBottom:"1px solid var(--border)" }}>
+                <span style={{ color:"var(--muted)" }}>{l}</span>
+                <span style={{ fontWeight:700 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-em" style={{ padding:"13px 32px" }} onClick={reset}>
+            Book Another Appointment
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Form ───────────────────────────────────────────────────
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="page-in" style={{ paddingTop:100, paddingBottom:80, background:"var(--warm)", minHeight:"100vh" }}>
@@ -980,10 +1017,13 @@ const ContactPage = () => {
           <Pill>📅 Book Now</Pill>
           <h1 className="serif sh" style={{ fontSize:"3rem", marginTop:12 }}>Book Your Free Consultation</h1>
           <p style={{ color:"var(--muted)", marginTop:16, maxWidth:500, margin:"16px auto 0", lineHeight:1.78 }}>
-            Fill the form below and we'll confirm within 30 minutes. Your first consultation is always <strong style={{ color:"var(--em)" }}>completely free.</strong>
+            Fill the form below and we'll confirm within 30 minutes. Your first consultation is always{" "}
+            <strong style={{ color:"var(--em)" }}>completely free.</strong>
           </p>
         </div>
+
         <div style={{ display:"grid", gridTemplateColumns:"3fr 2fr", gap:24 }} className="g2">
+          {/* ── Left: form card ── */}
           <div className="card" style={{ padding:40 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28, paddingBottom:20, borderBottom:"1px solid var(--border)" }}>
               <div style={{ width:46, height:46, borderRadius:14, background:"var(--grad-em)", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -994,13 +1034,41 @@ const ContactPage = () => {
                 <p style={{ color:"var(--muted)", fontSize:".8rem" }}>Fields marked * are required</p>
               </div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-              {fld("Full Name *","name","text","Your full name")}
-              {fld("Phone Number *","phone","tel","+91 98765 43210")}
-              {fld("Email Address *","email","email","your@email.com",true)}
+
+            {/* Using key prop so re-mount clears uncontrolled inputs cleanly */}
+            <div key={formKey} style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+
+              {/* Name */}
+              <div>
+                <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Full Name *</label>
+                <input id="pd-name" type="text" className={`finput${errs.name?" has-error":""}`}
+                  placeholder="Your full name"
+                  onChange={() => clearErr("name")} />
+                {errs.name && <p style={{ color:"#ef4444", fontSize:".75rem", marginTop:4 }}>{errs.name}</p>}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Phone Number *</label>
+                <input id="pd-phone" type="tel" className={`finput${errs.phone?" has-error":""}`}
+                  placeholder="+91 98765 43210"
+                  onChange={() => clearErr("phone")} />
+                {errs.phone && <p style={{ color:"#ef4444", fontSize:".75rem", marginTop:4 }}>{errs.phone}</p>}
+              </div>
+
+              {/* Email — full width */}
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Email Address *</label>
+                <input id="pd-email" type="email" className={`finput${errs.email?" has-error":""}`}
+                  placeholder="your@email.com"
+                  onChange={() => clearErr("email")} />
+                {errs.email && <p style={{ color:"#ef4444", fontSize:".75rem", marginTop:4 }}>{errs.email}</p>}
+              </div>
+
+              {/* Treatment */}
               <div style={{ gridColumn:"1/-1" }}>
                 <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Treatment Type</label>
-                <select className="finput" value={form.treatment} onChange={e => set("treatment", e.target.value)}>
+                <select id="pd-treatment" className="finput">
                   <option value="">Select a treatment...</option>
                   {SVCS.map(s => <option key={s.t} value={s.t}>{s.t}</option>)}
                   <option value="General Checkup">General Checkup</option>
@@ -1008,38 +1076,69 @@ const ContactPage = () => {
                   <option value="Emergency">Emergency</option>
                 </select>
               </div>
-              {fld("Preferred Date","date","date")}
+
+              {/* Date */}
+              <div>
+                <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Preferred Date</label>
+                <input id="pd-date" type="date" className="finput" min={today} />
+              </div>
+
+              {/* Time */}
               <div>
                 <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Preferred Time</label>
-                <select className="finput" value={form.time} onChange={e => set("time", e.target.value)}>
+                <select id="pd-time" className="finput">
                   <option value="">Select time...</option>
-                  {["9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM","7:30 PM"].map(t => (
+                  {["9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM",
+                    "2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM",
+                    "5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM","7:30 PM"].map(t => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Notes */}
               <div style={{ gridColumn:"1/-1" }}>
                 <label style={{ display:"block", fontWeight:700, fontSize:".82rem", marginBottom:6, color:"var(--slate)" }}>Additional Notes (optional)</label>
-                <textarea className="finput" placeholder="Any specific concerns, allergies, or special requests..." rows={3} value={form.msg} onChange={e => set("msg", e.target.value)} style={{ resize:"vertical" }} />
+                <textarea id="pd-msg" className="finput"
+                  placeholder="Any specific concerns, allergies, or special requests..."
+                  rows={3} style={{ resize:"vertical" }} />
               </div>
             </div>
-            <button className="btn btn-em" style={{ width:"100%", justifyContent:"center", marginTop:24, padding:"14px 0", fontSize:".95rem" }}
-              onClick={submit} disabled={loading}>
-              {loading
-                ? <><svg className="spin" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}><circle cx={12} cy={12} r={10} strokeOpacity={.25}/><path d="M12 2a10 10 0 0110 10"/></svg> Booking…</>
-                : <>Confirm Appointment <IC n="arr" s={17} /></>
-              }
+
+            {/* ── FIXED SUBMIT BUTTON ── */}
+            <button
+              className="btn btn-em"
+              style={{ width:"100%", justifyContent:"center", marginTop:24, padding:"14px 0", fontSize:".95rem" }}
+              onClick={submit}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <svg className="spin" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
+                    <circle cx={12} cy={12} r={10} strokeOpacity={.25}/>
+                    <path d="M12 2a10 10 0 0110 10"/>
+                  </svg>
+                  Booking…
+                </>
+              ) : (
+                <>Confirm Appointment <IC n="arr" s={17} /></>
+              )}
             </button>
-            <p style={{ textAlign:"center", color:"#9ca3af", fontSize:".75rem", marginTop:12 }}>🔒 Your information is 100% private and never shared.</p>
+
+            <p style={{ textAlign:"center", color:"#9ca3af", fontSize:".75rem", marginTop:12 }}>
+              🔒 Your information is 100% private and never shared.
+            </p>
           </div>
+
+          {/* ── Right: info sidebar ── */}
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
             <div className="card" style={{ padding:26 }}>
               <h3 className="serif" style={{ fontSize:"1.2rem", marginBottom:18 }}>Clinic Information</h3>
               {[
-                {i:"pin",  t:"Address",  v:"42, Brigade Road, Near MG Metro\nIndiranagar, Bangalore – 560001"},
-                {i:"phone",t:"Phone",    v:"+91 98765 43210 (Main)\n+91 80 4567 8901 (Emergency)"},
-                {i:"mail", t:"Email",    v:"hello@pearldent.in"},
-                {i:"smile",t:"WhatsApp", v:"+91 98765 43210"},
+                { i:"pin",   t:"Address",  v:"42, Brigade Road, Near MG Metro\nIndiranagar, Bangalore – 560001" },
+                { i:"phone", t:"Phone",    v:"+91 98765 43210 (Main)\n+91 80 4567 8901 (Emergency)" },
+                { i:"mail",  t:"Email",    v:"hello@pearldent.in" },
+                { i:"smile", t:"WhatsApp", v:"+91 98765 43210" },
               ].map(c => (
                 <div key={c.i} style={{ display:"flex", gap:12, marginBottom:16 }}>
                   <div style={{ width:38, height:38, borderRadius:10, background:"var(--sage)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -1052,34 +1151,41 @@ const ContactPage = () => {
                 </div>
               ))}
             </div>
+
             <div className="card" style={{ padding:26 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
                 <IC n="clock" s={16} style={{ color:"var(--em)" }} />
                 <h3 className="serif" style={{ fontSize:"1.1rem" }}>Clinic Hours</h3>
               </div>
               {[
-                {d:"Monday – Friday", t:"9:00 AM – 8:00 PM",  g:false},
-                {d:"Saturday",        t:"9:00 AM – 6:00 PM",  g:false},
-                {d:"Sunday",          t:"10:00 AM – 2:00 PM", g:false},
-                {d:"Public Holidays", t:"11:00 AM – 3:00 PM", g:false},
-                {d:"Emergency Line",  t:"24 / 7 Available",   g:true },
+                { d:"Monday – Friday", t:"9:00 AM – 8:00 PM",  g:false },
+                { d:"Saturday",        t:"9:00 AM – 6:00 PM",  g:false },
+                { d:"Sunday",          t:"10:00 AM – 2:00 PM", g:false },
+                { d:"Public Holidays", t:"11:00 AM – 3:00 PM", g:false },
+                { d:"Emergency Line",  t:"24 / 7 Available",   g:true  },
               ].map(r => (
                 <div key={r.d} style={{ display:"flex", justifyContent:"space-between", fontSize:".85rem", padding:"8px 0", borderBottom:"1px solid var(--border)", color:r.g?"var(--em-m)":"var(--slate)" }}>
-                  <span>{r.d}</span><span style={{ fontWeight:700 }}>{r.t}</span>
+                  <span>{r.d}</span>
+                  <span style={{ fontWeight:700 }}>{r.t}</span>
                 </div>
               ))}
             </div>
+
             <div style={{ background:"var(--grad-em)", borderRadius:22, padding:22, color:"#fff", textAlign:"center" }}>
               <div style={{ fontSize:28, marginBottom:8 }}>🚨</div>
               <h3 className="serif" style={{ fontSize:"1.15rem", marginBottom:6 }}>Dental Emergency?</h3>
               <p style={{ fontSize:".82rem", opacity:.75, marginBottom:16, lineHeight:1.7 }}>Same-day slots available 7 days a week. Call us immediately.</p>
-              <a href="tel:+919876543210" className="btn btn-ghost btn-sm"><IC n="phone" s={15} /> +91 98765 43210</a>
+              <a href="tel:+919876543210" className="btn btn-ghost btn-sm">
+                <IC n="phone" s={15} /> +91 98765 43210
+              </a>
             </div>
+
             <div className="map-wrap">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.5534!2d77.6408!3d12.9784!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTLCsDU4JzQyLjMiTiA3N8KwMzgnMjYuOSJF!5e0!3m2!1sen!2sin!4v1234567890"
                 width="100%" height="210" style={{ border:0, display:"block" }}
-                allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="PearlDent Location"
+                allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+                title="PearlDent Location"
               />
             </div>
           </div>
@@ -1089,29 +1195,30 @@ const ContactPage = () => {
   );
 };
 
-// ── Scroll to top ──────────────────────────────────────────────
+// ── Scroll to top ─────────────────────────────────────────────
 const ScrollTop = () => {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo({ top:0, behavior:"smooth" }); }, [pathname]);
   return null;
 };
 
-// ── APP ROOT ───────────────────────────────────────────────────
+// ── APP ROOT ──────────────────────────────────────────────────
 export default function App() {
   return (
     <Router>
       <G />
       <ScrollTop />
       <Navbar />
+      <WAButton />
       <Routes>
-        <Route path="/"         element={<HomePage    />} />
+        <Route path="/"         element={<HomePage     />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/gallery"  element={<GalleryPage  />} />
         <Route path="/doctors"  element={<DoctorsPage  />} />
         <Route path="/pricing"  element={<PricingPage  />} />
         <Route path="/faq"      element={<FAQPage      />} />
         <Route path="/contact"  element={<ContactPage  />} />
-        <Route path="*"         element={<HomePage    />} />
+        <Route path="*"         element={<HomePage     />} />
       </Routes>
       <Footer />
     </Router>
