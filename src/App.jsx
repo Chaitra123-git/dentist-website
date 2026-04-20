@@ -1135,21 +1135,30 @@ const ContactPage = () => {
             <div className="card" style={{ padding:26 }}>
               <h3 className="serif" style={{ fontSize:"1.2rem", marginBottom:18 }}>Clinic Information</h3>
               {[
-                { i:"pin",   t:"Address",  v:"42, Brigade Road, Near MG Metro\nIndiranagar, Bangalore – 560001" },
-                { i:"phone", t:"Phone",    v:"+91 98765 43210 (Main)\n+91 80 4567 8901 (Emergency)" },
-                { i:"mail",  t:"Email",    v:"hello@pearldent.in" },
-                { i:"smile", t:"WhatsApp", v:"+91 98765 43210" },
-              ].map(c => (
-                <div key={c.i} style={{ display:"flex", gap:12, marginBottom:16 }}>
-                  <div style={{ width:38, height:38, borderRadius:10, background:"var(--sage)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                    <IC n={c.i} s={16} style={{ color:"var(--em)" }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize:".72rem", color:"#9ca3af", fontWeight:700, marginBottom:2 }}>{c.t}</div>
-                    <div style={{ fontSize:".85rem", color:"var(--slate)", whiteSpace:"pre-line" }}>{c.v}</div>
-                  </div>
-                </div>
-              ))}
+  { i:"pin",      t:"Address",  v:"42, Brigade Road, Near MG Metro\nIndiranagar, Bangalore – 560001" },
+  { i:"phone",    t:"Phone",    v:"+91 98765 43210 (Main)\n+91 80 4567 8901 (Emergency)" },
+  { i:"mail",     t:"Email",    v:"hello@pearldent.in",    link:"mailto:hello@pearldent.in" },
+  { i:"whatsapp", t:"WhatsApp", v:"+91 98765 43210",       link:"https://wa.me/919876543210?text=Hi%20PearlDent!%20I'd%20like%20to%20book%20an%20appointment." },
+].map(c => (
+  <div key={c.i} style={{ display:"flex", gap:12, marginBottom:16 }}>
+    <div style={{ width:38, height:38, borderRadius:10, background:c.i==="whatsapp"?"#25d366":"var(--sage)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+      <IC n={c.i} s={16} style={{ color:c.i==="whatsapp"?"#fff":"var(--em)", fill:c.i==="whatsapp"?"#fff":"none", stroke:c.i==="whatsapp"?"none":"currentColor" }} />
+    </div>
+    <div>
+      <div style={{ fontSize:".72rem", color:"#9ca3af", fontWeight:700, marginBottom:2 }}>{c.t}</div>
+      {c.link ? (
+        <a href={c.link} target="_blank" rel="noopener noreferrer"
+          style={{ fontSize:".85rem", color:"var(--em)", fontWeight:600, textDecoration:"none", whiteSpace:"pre-line" }}
+          onMouseEnter={e => e.currentTarget.style.textDecoration="underline"}
+          onMouseLeave={e => e.currentTarget.style.textDecoration="none"}>
+          {c.v}
+        </a>
+      ) : (
+        <div style={{ fontSize:".85rem", color:"var(--slate)", whiteSpace:"pre-line" }}>{c.v}</div>
+      )}
+    </div>
+  </div>
+))}
             </div>
 
             <div className="card" style={{ padding:26 }}>
